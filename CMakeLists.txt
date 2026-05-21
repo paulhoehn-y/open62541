@@ -67,7 +67,7 @@ MESSAGE(STATUS "open62541 Version: ${OPEN62541_VERSION}")
 # Architecture #
 ################
 
-set(UA_ARCHITECTURES "none" "posix" "win32" "zephyr" "freertos-lwip" "posix-lwip")
+set(UA_ARCHITECTURES "none" "posix" "win32" "zephyr" "freertos-lwip" "freertos-mesocket" "posix-lwip")
 set(UA_ARCHITECTURE "" CACHE STRING "Architecture to build open62541 for")
 SET_PROPERTY(CACHE UA_ARCHITECTURE PROPERTY STRINGS "" ${UA_ARCHITECTURES})
 
@@ -89,6 +89,9 @@ elseif("${UA_ARCHITECTURE}" STREQUAL "zephyr")
 elseif("${UA_ARCHITECTURE}" STREQUAL "freertos-lwip")
     set(UA_ARCHITECTURE_LWIP 1)
     set(UA_ARCHITECTURE_FREERTOS 1)
+elseif("${UA_ARCHITECTURE}" STREQUAL "freertos-mesocket")
+    set(UA_ARCHITECTURE_FREERTOS 1) # to use the freertos clock, if we want to use "real" time (SNTP) we need to build our own implementation
+    set(UA_ARCHITECTURE_MESOCKET 1)
 elseif("${UA_ARCHITECTURE}" STREQUAL "posix-lwip")
     set(UA_ARCHITECTURE_LWIP 1)
     set(UA_ARCHITECTURE_POSIX 1)
@@ -1092,18 +1095,18 @@ elseif(UA_ARCHITECTURE_POSIX OR UA_ARCHITECTURE_WIN32 OR UA_ENABLE_AMALGAMATION)
          ${PROJECT_SOURCE_DIR}/arch/posix/eventloop_posix_interrupt.c)
 endif()
 
-if(UA_ARCHITECTURE_FREERTOS)
-    # Assume the FreeRTOS POSIX "Simulator".
-    # Change this to directly include the source files if required.
-    set(FREERTOS_KERNEL_PATH "~/software/FreeRTOSv202411.00/FreeRTOS/Source" CACHE STRING "")
-    set(FREERTOS_PORT_PATH "~/software/FreeRTOSv202411.00/FreeRTOS/Demo/Posix_GCC" CACHE STRING "")
-    include(arch/freertos/freertos.cmake)
-    include_directories(${FREERTOS_PORT_PATH} "${FREERTOS_KERNEL_PATH}/include")
-    include_directories("${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/Posix")
-    add_compile_definitions(projCOVERAGE_TEST=0)
-    add_compile_definitions(projENABLE_TRACING=0)
-    list(APPEND open62541_LIBRARIES freertos_config freertos_kernel)
-endif()
+#if(UA_ARCHITECTURE_FREERTOS)
+#    # Assume the FreeRTOS POSIX "Simulator".
+#    # Change this to directly include the source files if required.
+#    set(FREERTOS_KERNEL_PATH "~/software/FreeRTOSv202411.00/FreeRTOS/Source" CACHE STRING "")
+#    set(FREERTOS_PORT_PATH "~/software/FreeRTOSv202411.00/FreeRTOS/Demo/Posix_GCC" CACHE STRING "")
+#    include(arch/freertos/freertos.cmake)
+#    include_directories(${FREERTOS_PORT_PATH} "${FREERTOS_KERNEL_PATH}/include")
+#    include_directories("${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/Posix")
+#    add_compile_definitions(projCOVERAGE_TEST=0)
+#    add_compile_definitions(projENABLE_TRACING=0)
+#    list(APPEND open62541_LIBRARIES freertos_config freertos_kernel)
+#endif()
 
 if(UA_ENABLE_MQTT)
     list(APPEND plugin_sources ${PROJECT_SOURCE_DIR}/arch/common/eventloop_mqtt.c)

@@ -34,6 +34,9 @@
 #include <winsock2.h>     /* AF_INET */
 #elif defined(UA_ARCHITECTURE_LWIP)
 #include <lwip/sockets.h> /* AF_INET */
+#elif defined(UA_ARCHITECTURE_MESOCKET)
+#include "socket_api.h" /* AF_INET */
+#define AF_INET6       AF_UNSPEC // Should be moved into socket_api.h
 #else
 #include <sys/socket.h>   /* AF_INET */
 #endif

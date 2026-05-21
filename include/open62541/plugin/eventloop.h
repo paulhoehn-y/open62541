@@ -975,6 +975,31 @@ UA_ConnectionManager_new_LWIP_TCP(const UA_String eventSourceName);
 UA_EXPORT UA_ConnectionManager *
 UA_ConnectionManager_new_LWIP_UDP(const UA_String eventSourceName);
 
+#elif defined(UA_ARCHITECTURE_MESOCKET)
+
+struct UA_EventLoopConfiguration;
+typedef struct UA_EventLoopConfiguration UA_EventLoopConfiguration;
+
+struct UA_EventLoopConfiguration {
+    UA_KeyValueMap params;
+
+    UA_StatusCode (*netifInit)(UA_EventLoop *el, const UA_String *ipaddr,
+                               const UA_String *netmask, const UA_String *gw);
+    UA_StatusCode (*netifPoll)(UA_EventLoop *el);
+    void (*netifShutdown)(UA_EventLoop *el);
+};
+
+/**
+ * MurrSocket EventLoop Implementation
+ * -----------------------------------
+ * EventLoop built on the Murr socket API adapter (FreeRTOS target). */
+
+UA_EXPORT UA_EventLoop *
+UA_EventLoop_new_MurrSocket(const UA_Logger *logger, UA_EventLoopConfiguration *config);
+
+UA_EXPORT UA_ConnectionManager *
+UA_ConnectionManager_new_MurrSocket_TCP(const UA_String eventSourceName);
+
 #endif
 
 _UA_END_DECLS
