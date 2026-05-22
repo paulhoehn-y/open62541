@@ -995,10 +995,10 @@ struct UA_EventLoopConfiguration {
  * EventLoop built on the Murr socket API adapter (FreeRTOS target). */
 
 UA_EXPORT UA_EventLoop *
-UA_EventLoop_new_MurrSocket(const UA_Logger *logger, UA_EventLoopConfiguration *config);
+UA_EventLoop_new_MeSocket(const UA_Logger *logger, UA_EventLoopConfiguration *config);
 
 UA_EXPORT UA_ConnectionManager *
-UA_ConnectionManager_new_MurrSocket_TCP(const UA_String eventSourceName);
+UA_ConnectionManager_new_MeSocket_TCP(const UA_String eventSourceName);
 
 #endif
 

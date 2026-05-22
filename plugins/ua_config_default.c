@@ -291,7 +291,7 @@ setDefaultConfig(UA_ServerConfig *conf, UA_UInt16 portNumber) {
 #if defined(UA_ARCHITECTURE_ZEPHYR)
         conf->eventLoop = UA_EventLoop_new_Zephyr(conf->logging);
 #elif defined(UA_ARCHITECTURE_MESOCKET)
-        conf->eventLoop = UA_EventLoop_new_MurrSocket(conf->logging, NULL);
+        conf->eventLoop = UA_EventLoop_new_MeSocket(conf->logging, NULL);
 #elif defined(UA_ARCHITECTURE_LWIP)
         conf->eventLoop = UA_EventLoop_new_LWIP(conf->logging, NULL);
 #else
@@ -308,7 +308,7 @@ setDefaultConfig(UA_ServerConfig *conf, UA_UInt16 portNumber) {
             UA_ConnectionManager_new_Zephyr_TCP(UA_STRING("tcp connection manager"));
 #elif defined(UA_ARCHITECTURE_MESOCKET)
         UA_ConnectionManager *tcpCM =
-            UA_ConnectionManager_new_MurrSocket_TCP(UA_STRING("tcp connection manager"));
+            UA_ConnectionManager_new_MeSocket_TCP(UA_STRING("tcp connection manager"));
 #elif defined(UA_ARCHITECTURE_LWIP)
         UA_ConnectionManager *tcpCM =
             UA_ConnectionManager_new_LWIP_TCP(UA_STRING("tcp connection manager"));
@@ -2086,7 +2086,7 @@ UA_ClientConfig_setDefault(UA_ClientConfig *config) {
 #if defined(UA_ARCHITECTURE_ZEPHYR)
         config->eventLoop = UA_EventLoop_new_Zephyr(config->logging);
 #elif defined(UA_ARCHITECTURE_MESOCKET)
-        config->eventLoop = UA_EventLoop_new_MurrSocket(config->logging, NULL);
+        config->eventLoop = UA_EventLoop_new_MeSocket(config->logging, NULL);
 #elif defined(UA_ARCHITECTURE_LWIP)
         config->eventLoop = UA_EventLoop_new_LWIP(config->logging, NULL);
 #else
@@ -2100,7 +2100,7 @@ UA_ClientConfig_setDefault(UA_ClientConfig *config) {
             UA_ConnectionManager_new_Zephyr_TCP(UA_STRING("tcp connection manager"));
 #elif defined(UA_ARCHITECTURE_MESOCKET)
         UA_ConnectionManager *tcpCM =
-            UA_ConnectionManager_new_MurrSocket_TCP(UA_STRING("tcp connection manager"));
+            UA_ConnectionManager_new_MeSocket_TCP(UA_STRING("tcp connection manager"));
 #elif defined(UA_ARCHITECTURE_LWIP)
         UA_ConnectionManager *tcpCM =
             UA_ConnectionManager_new_LWIP_TCP(UA_STRING("tcp connection manager"));
