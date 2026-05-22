@@ -998,7 +998,7 @@ UA_EXPORT UA_EventLoop *
 UA_EventLoop_new_MeSocket(const UA_Logger *logger, UA_EventLoopConfiguration *config);
 
 UA_EXPORT UA_ConnectionManager *
-UA_ConnectionManager_new_MeSocket_TCP(const UA_String eventSourceName);
+UA_ConnectionManager_new_MeSocket_TCP(UA_String eventSourceName);
 
 #endif
 
