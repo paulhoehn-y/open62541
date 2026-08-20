@@ -27,6 +27,10 @@
 #include <mbedtls/version.h>
 #include <mbedtls/x509_crt.h>
 
+#ifdef UA_ENABLE_SE05X
+#include <Open62541Se05x_Api.h>
+#endif
+
 /* Notes:
  * mbedTLS' AES allows in-place encryption and decryption. Sow we don't have to
  * allocate temp buffers.
@@ -121,6 +125,17 @@ asym_sign_basic256sha256(const UA_SecurityPolicy *policy,
 
     Basic256Sha256_PolicyContext *pc =
         (Basic256Sha256_PolicyContext *)policy->policyContext;
+#ifdef UA_ENABLE_SE05X
+    if(open62541Se05x_isBound()) {
+        size_t signatureLength = signature->length;
+        uint32_t se05xResult = open62541Se05x_signSha256(
+            hash, sizeof(hash), signature->data, &signatureLength);
+        if(se05xResult != 0u)
+            return UA_STATUSCODE_BADINTERNALERROR;
+        signature->length = signatureLength;
+        return UA_STATUSCODE_GOOD;
+    }
+#endif
     mbedtls_rsa_context *rsaContext = mbedtls_pk_rsa(pc->localPrivateKey);
     mbedtls_rsa_set_padding(rsaContext, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_SHA256);
 
@@ -146,6 +161,10 @@ asym_getLocalSignatureSize_basic256sha256(const UA_SecurityPolicy *policy,
                                           const void *channelContext) {
     if(channelContext == NULL)
         return 0;
+#ifdef UA_ENABLE_SE05X
+    if(open62541Se05x_isBound())
+        return open62541Se05x_getKeySize();
+#endif
     Basic256Sha256_PolicyContext *pc =
         (Basic256Sha256_PolicyContext *)policy->policyContext;
 #if MBEDTLS_VERSION_NUMBER >= 0x02060000 && MBEDTLS_VERSION_NUMBER < 0x03000000
@@ -225,6 +244,24 @@ asym_decrypt_basic256sha256(const UA_SecurityPolicy *policy,
                             void *channelContext, UA_ByteString *data) {
     if(data == NULL)
         return UA_STATUSCODE_BADINTERNALERROR;
+#ifdef UA_ENABLE_SE05X
+    if(open62541Se05x_isBound()) {
+        UA_ByteString plaintext = UA_BYTESTRING_NULL;
+        UA_StatusCode result = UA_ByteString_allocBuffer(&plaintext, data->length);
+        if(result != UA_STATUSCODE_GOOD)
+            return result;
+        size_t plaintextLength = plaintext.length;
+        uint32_t se05xResult = open62541Se05x_decryptOaepSha1(
+            data->data, data->length, plaintext.data, &plaintextLength);
+        if(se05xResult == 0u) {
+            memcpy(data->data, plaintext.data, plaintextLength);
+            data->length = plaintextLength;
+        }
+        UA_ByteString_clear(&plaintext);
+        return (se05xResult == 0u) ?
+            UA_STATUSCODE_GOOD : UA_STATUSCODE_BADSECURITYCHECKSFAILED;
+    }
+#endif
     Basic256Sha256_PolicyContext *pc =
         (Basic256Sha256_PolicyContext *)policy->policyContext;
     return mbedtls_decrypt_rsaOaep(&pc->localPrivateKey, &pc->drbgContext,
@@ -234,6 +271,10 @@ asym_decrypt_basic256sha256(const UA_SecurityPolicy *policy,
 static size_t
 asym_getLocalEncryptionKeyLength_basic256sha256(const UA_SecurityPolicy *policy,
                                                 const void *channelContext) {
+#ifdef UA_ENABLE_SE05X
+    if(open62541Se05x_isBound())
+        return open62541Se05x_getKeySize() * 8u;
+#endif
     Basic256Sha256_PolicyContext *pc =
         (Basic256Sha256_PolicyContext *)policy->policyContext;
     return mbedtls_pk_get_len(&pc->localPrivateKey) * 8;
@@ -694,6 +735,7 @@ updateCertificateAndPrivateKey_basic256sha256(UA_SecurityPolicy *securityPolicy,
     return retval;
 }
 
+#ifndef UA_ENABLE_SE05X
 static UA_StatusCode
 createSigningRequest_basic256sha256(UA_SecurityPolicy *securityPolicy,
                                             const UA_String *subjectName,
@@ -712,6 +754,7 @@ createSigningRequest_basic256sha256(UA_SecurityPolicy *securityPolicy,
                                         securityPolicy, subjectName, nonce,
                                         csr, newPrivateKey);
 }
+#endif
 
 static UA_StatusCode
 policyContext_newContext_basic256sha256(UA_SecurityPolicy *securityPolicy,
@@ -720,7 +763,11 @@ policyContext_newContext_basic256sha256(UA_SecurityPolicy *securityPolicy,
     if(securityPolicy == NULL)
         return UA_STATUSCODE_BADINTERNALERROR;
 
-    if(localPrivateKey.length == 0) {
+    if(localPrivateKey.length == 0
+#ifdef UA_ENABLE_SE05X
+       && !open62541Se05x_isBound()
+#endif
+    ) {
         UA_LOG_ERROR(securityPolicy->logger, UA_LOGCATEGORY_SECURITYPOLICY,
                      "Can not initialize security policy. Private key is empty.");
         return UA_STATUSCODE_BADINVALIDARGUMENT;
@@ -749,12 +796,13 @@ policyContext_newContext_basic256sha256(UA_SecurityPolicy *securityPolicy,
         goto error;
     }
 
+#if defined(MBEDTLS_SELF_TEST) && !defined(UA_ENABLE_SE05X)
     mbedErr = mbedtls_entropy_self_test(0);
-
     if(mbedErr) {
         retval = UA_STATUSCODE_BADSECURITYCHECKSFAILED;
         goto error;
     }
+#endif
 
     /* Seed the RNG */
     char *personalization = "open62541-drbg";
@@ -766,12 +814,18 @@ policyContext_newContext_basic256sha256(UA_SecurityPolicy *securityPolicy,
         goto error;
     }
 
-    /* Set the private key */
-    mbedErr = UA_mbedTLS_LoadPrivateKey(&localPrivateKey, &pc->localPrivateKey,
-                                        &pc->entropyContext);
-    if(mbedErr) {
-        retval = UA_STATUSCODE_BADSECURITYCHECKSFAILED;
-        goto error;
+    /* Set the private key. With SE05x enabled, only the key identifier is
+     * retained by the target adapter and no private key enters host memory. */
+#ifdef UA_ENABLE_SE05X
+    if(!open62541Se05x_isBound())
+#endif
+    {
+        mbedErr = UA_mbedTLS_LoadPrivateKey(&localPrivateKey, &pc->localPrivateKey,
+                                            &pc->entropyContext);
+        if(mbedErr) {
+            retval = UA_STATUSCODE_BADSECURITYCHECKSFAILED;
+            goto error;
+        }
     }
 
     /* Set the local certificate thumbprint */
@@ -869,7 +923,13 @@ UA_SecurityPolicy_Basic256Sha256(UA_SecurityPolicy *sp,
     sp->makeCertThumbprint = asym_makeThumbprint_basic256sha256;
     sp->compareCertThumbprint = compareCertificateThumbprint_basic256sha256;
     sp->updateCertificate = updateCertificateAndPrivateKey_basic256sha256;
+#ifdef UA_ENABLE_SE05X
+    /* Provisioning creates the CSR externally because the key is
+     * non-exportable and the embedded stack has no runtime CA workflow. */
+    sp->createSigningRequest = NULL;
+#else
     sp->createSigningRequest = createSigningRequest_basic256sha256;
+#endif
     sp->clear = clear_basic256sha256;
 
     UA_StatusCode res =

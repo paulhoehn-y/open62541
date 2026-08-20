@@ -675,11 +675,13 @@ policyContext_newContext_sp_basic256(UA_SecurityPolicy *securityPolicy,
         goto error;
     }
 
+#if defined(MBEDTLS_SELF_TEST)
     mbedErr = mbedtls_entropy_self_test(0);
     if(mbedErr) {
         retval = UA_STATUSCODE_BADSECURITYCHECKSFAILED;
         goto error;
     }
+#endif
 
     /* Seed the RNG */
     char *personalization = "open62541-drbg";

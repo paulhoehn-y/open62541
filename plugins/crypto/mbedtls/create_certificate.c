@@ -458,12 +458,16 @@ static int write_private_key(mbedtls_pk_context *key, UA_CertificateFormat keyFo
         break;
     }
     case UA_CERTIFICATEFORMAT_PEM: {
+#if defined(MBEDTLS_PEM_WRITE_C)
         if((ret = mbedtls_pk_write_key_pem(key, output_buf, sizeof(output_buf))) != 0) {
             return ret;
         }
 
         len = strlen((char *)output_buf);
         break;
+#else
+        return MBEDTLS_ERR_PK_FEATURE_UNAVAILABLE;
+#endif
     }
     }
 
@@ -494,12 +498,16 @@ static int write_certificate(mbedtls_x509write_cert *crt, UA_CertificateFormat c
         break;
     }
     case UA_CERTIFICATEFORMAT_PEM: {
+#if defined(MBEDTLS_PEM_WRITE_C)
         if((ret = mbedtls_x509write_crt_pem(crt, output_buf, sizeof(output_buf), f_rng, p_rng)) < 0) {
             return ret;
         }
 
         len = strlen((char *)output_buf);
         break;
+#else
+        return MBEDTLS_ERR_X509_FEATURE_UNAVAILABLE;
+#endif
     }
     }
 
